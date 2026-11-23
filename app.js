@@ -20,7 +20,31 @@ $('open-catalog').onclick=()=>openCatalog();$('hero-search').onsubmit=e=>{e.prev
 $('search').addEventListener('input',()=>{query=$('search').value;const box=$('quick-results');box.replaceChildren();if(!clean(query)){box.hidden=true;return;}const rows=findRecords(state.records,query);if(!rows.length)box.append(el('p','لم نجد نتائج لهذا البحث.'));rows.slice(0,4).forEach(r=>{const b=el('button',clean(r.title));b.append(el('small',[r.author,r.subject].filter(Boolean).join(' · ')));b.onclick=()=>{box.hidden=true;openEdit(r.id)};box.append(b)});const all=el('button','عرض النتائج ('+num(rows.length)+')','all-results');all.onclick=()=>openCatalog(query);box.append(all);box.style.top=($('hero-search').offsetTop+$('hero-search').offsetHeight+8)+'px';box.hidden=false;});
 document.addEventListener('click',e=>{if(!$('hero-search').contains(e.target)&&!$('quick-results').contains(e.target))$('quick-results').hidden=true});$('search').addEventListener('keydown',e=>{if(e.key==='Escape')$('quick-results').hidden=true});
 for(const id of ['catalog-search',...filterFields.map(([k])=>'filter-'+k),'sort'])$(id).addEventListener(id==='catalog-search'?'input':'change',()=>{page=0;renderCatalog()});$('clear-filters').onclick=()=>{$('catalog-search').value='';filterFields.forEach(([k])=>$('filter-'+k).value='');page=0;renderCatalog()};$('previous-page').onclick=()=>{page--;renderCatalog();$('catalog-dialog .table-wrap')?.scrollTo?.(0,0)};$('next-page').onclick=()=>{page++;renderCatalog()};
-function openEdit(id=null){editing=id;const r=id?state.records.find(x=>x.id===id):{id:String(Math.max(0,...state.records.map(x=>Number(x.id)||0))+1),material:'كتاب'};$('edit-title').textContent=id?'تفاصيل المادة وتعديلها':'إضافة مادة';$('edit-error').textContent='';$('edit-fields').replaceChildren();for(const[k,label]of FIELDS){const l=el('label',label,'field'+(k==='title'?' wide':'')),input=document.createElement('input');input.name=k;input.value=r[k]??'';input.autocomplete='off';if(k==='id'||k==='title')input.required=true;if(k==='id'){input.readOnly=Boolean(id);input.inputMode='numeric';}if(k==='copies'){input.type='number';input.min='0';input.step='1';}if(['material','subject','reading','collection','publisher','location'].includes(k)){const datalist=document.createElement('datalist');datalist.id='choices-'+k;new Set(state.records.map(x=>clean(x[k])).filter(Boolean)).forEach(v=>datalist.append(new Option(v,v)));input.setAttribute('list',datalist.id);l.append(datalist);}l.append(input);$('edit-fields').append(l);}open('edit-dialog');}
+
+function closeChoiceMenus(except=null){document.querySelectorAll('.choice-field').forEach(w=>{if(w===except)return;w.querySelector('.choice-menu').hidden=true;w.querySelector('input').setAttribute('aria-expanded','false');w.querySelector('.choice-toggle').setAttribute('aria-expanded','false');});}
+function choiceField(input,key,label){
+ const wrapper=el('div',undefined,'choice-field'),toggle=el('button',undefined,'choice-toggle');toggle.type='button';toggle.setAttribute('aria-label','اختيار '+label);toggle.setAttribute('aria-expanded','false');toggle.append(icon('chevron'));
+ const menu=el('div',undefined,'choice-menu');menu.id='options-'+key;menu.hidden=true;menu.setAttribute('role','listbox');menu.setAttribute('aria-label','خيارات '+label);
+ input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',menu.id);
+ const defaults={reading:['مقروء','متوقف','ماجستير','ماجستير - مقروء'],collection:['رقمي','ورقي','رقمي ، ورقي'],material:['كتاب']};
+ const values=[...new Set([...state.records.map(r=>clean(r[key])),...(defaults[key]||[])].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+ let choices=[],active=-1;
+ const close=()=>{menu.hidden=true;input.setAttribute('aria-expanded','false');toggle.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');active=-1;};
+ const choose=value=>{input.value=value;close();input.dispatchEvent(new Event('change',{bubbles:true}));input.focus();};
+ const show=(filter='')=>{closeChoiceMenus(wrapper);choices=values.filter(v=>!filter||normalize(v).includes(normalize(filter))).slice(0,30);active=-1;menu.replaceChildren();
+  const empty=el('button','غير محدد','choice-option');empty.type='button';empty.setAttribute('role','option');empty.setAttribute('aria-selected',String(!input.value));empty.onmousedown=e=>e.preventDefault();empty.onclick=()=>choose('');menu.append(empty);
+  choices.forEach((value,i)=>{const option=el('button',value,'choice-option');option.type='button';option.id=menu.id+'-'+i;option.setAttribute('role','option');option.setAttribute('aria-selected',String(input.value===value));option.onmousedown=e=>e.preventDefault();option.onclick=()=>choose(value);menu.append(option);});
+  if(filter&&!values.some(v=>normalize(v)===normalize(filter)))menu.append(el('p','يمكنك استخدام النص المكتوب كقيمة جديدة.','choice-hint'));
+  if(values.length>30&&!filter)menu.append(el('p','اكتب لتضييق الخيارات.','choice-hint'));
+  menu.hidden=false;input.setAttribute('aria-expanded','true');toggle.setAttribute('aria-expanded','true');
+ };
+ toggle.onmousedown=e=>e.preventDefault();toggle.onclick=()=>{if(menu.hidden){input.focus();show();}else close();};
+ input.oninput=()=>show(input.value);input.onkeydown=e=>{if(e.key==='Escape'){if(!menu.hidden){e.preventDefault();e.stopPropagation();close();}return;}if(e.key==='Tab'){close();return;}if(e.key==='Enter'&&!menu.hidden&&active>=0){e.preventDefault();choose(choices[active]);return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(menu.hidden)show();if(!choices.length)return;active=(active+(e.key==='ArrowDown'?1:-1)+choices.length)%choices.length;menu.querySelectorAll('.choice-option').forEach(n=>n.classList.remove('is-active'));const target=menu.querySelector('#'+menu.id+'-'+active);target.classList.add('is-active');input.setAttribute('aria-activedescendant',target.id);target.scrollIntoView({block:'nearest'});}};
+ input.onblur=e=>{if(!wrapper.contains(e.relatedTarget))close();};
+ wrapper.append(input,toggle,menu);return wrapper;
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.choice-field'))closeChoiceMenus();});
+function openEdit(id=null){editing=id;const r=id?state.records.find(x=>x.id===id):{id:String(Math.max(0,...state.records.map(x=>Number(x.id)||0))+1),material:'كتاب'};$('edit-title').textContent=id?'تفاصيل المادة وتعديلها':'إضافة مادة';$('edit-error').textContent='';$('edit-fields').replaceChildren();for(const[k,label]of FIELDS){const l=el('div',undefined,'field'+(k==='title'?' wide':'')),caption=el('label',label),input=document.createElement('input');input.id='field-'+k;caption.htmlFor=input.id;input.name=k;input.value=r[k]??'';input.autocomplete='off';if(k==='id'||k==='title')input.required=true;if(k==='id'){input.readOnly=Boolean(id);input.inputMode='numeric';}if(k==='copies'){input.type='number';input.min='0';input.step='1';}l.append(caption);if(['material','subject','reading','collection','author','publisher','location'].includes(k))l.append(choiceField(input,k,label));else l.append(input);$('edit-fields').append(l);}open('edit-dialog');}
 for(const id of ['add-top','catalog-add'])$(id).onclick=()=>openEdit();
 $('edit-form').onsubmit=e=>{e.preventDefault();const form=new FormData(e.currentTarget),r=Object.fromEntries(FIELDS.map(([k])=>[k,clean(form.get(k))||null]));r.id=normalize(r.id);if(!r.id||!r.title)return;if(!editing&&state.records.some(x=>normalize(x.id)===r.id)){$('edit-error').textContent='رقم الفهرسة مستخدم. اختر رقمًا آخر.';return;}for(const k of ['copies'])if(r[k]!==null){const value=Number(r[k]);if(!Number.isInteger(value)||value<0){$('edit-error').textContent='عدد النسخ يجب أن يكون عددًا صحيحًا غير سالب.';return;}r[k]=value;}if(!editing&&state.records.some(x=>normalize(x.title)===normalize(r.title)&&normalize(x.author)===normalize(r.author))&&!confirm('توجد مادة بنفس العنوان والمؤلف. هل تريد إضافة سجل مستقل؟'))return;try{commit(editing?state.records.map(x=>x.id===editing?r:x):[...state.records,r]);$('edit-dialog').close();toast(editing?'تم حفظ التعديلات':'أُضيفت المادة إلى الفهرس')}catch(error){$('edit-error').textContent=error.message;}};
 let xlsxPromise;async function xlsx(){if(window.XLSX)return window.XLSX;if(!xlsxPromise)xlsxPromise=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='xlsx.full.min.js';script.onload=()=>resolve(window.XLSX);script.onerror=()=>{xlsxPromise=null;reject(Error('تعذّر تحميل قارئ الإكسيل. أعد المحاولة.'))};document.head.append(script)});return xlsxPromise;}
@@ -44,22 +68,15 @@ $('publish-download').onclick=()=>{const payload={schemaVersion:1,version:'publi
 $('more-stats').onclick=()=>{const s=stats(state.records),books=stats(state.records.filter(r=>clean(r.material)==='كتاب')),details=$('stats-details');details.replaceChildren();for(const[label,value]of [['إجمالي المواد',s.total],['الكتب ضمن المواد',s.books],['الكتب الرقمية',books.digital],['الكتب الورقية',books.paper],['المواضيع كما وردت في الملف',s.subjects],['أسماء المؤلفين المسجلة',s.authors],['دور النشر المسجلة',s.publishers]]){const row=el('div',undefined,'stats-row');row.append(el('span',label),el('strong',num(value)));details.append(row)}details.append(el('p',`عدد النسخ مسجّل في ${num(s.copiesKnown)} من ${num(s.total)} مادة؛ لذلك لا نعرض إجماليًا للنسخ. أرقام الكتب تشمل المواد المسجلة بنوع «كتاب» فقط. الكتاب المتاح رقميًا وورقيًا يُحسب ضمن كليهما. الأسماء والمواضيع محسوبة كما سُجلت.`,'stats-note'));open('stats-dialog')};
 $('keep-local').onclick=()=>$('source-dialog').close();$('use-published').onclick=()=>{if(!confirm('استخدام النسخة المنشورة بدل التعديلات المحلية؟ صدّر تعديلاتك أولًا إن أردت الاحتفاظ بها.'))return;try{localStorage.setItem(BACKUP,JSON.stringify(state));const next={records:structuredClone(source.records),auxiliary:structuredClone(source.auxiliary),baseVersion:source.version,dirty:false,updated:null};localStorage.setItem(KEY,JSON.stringify(next));state=next;refresh();$('source-dialog').close();toast('تم تحميل النسخة المنشورة')}catch(e){toast(e.message)}};
 
-let topicsExpanded=false;
-function renderTopics(){
- const groups=new Map();
- for(const record of state.records){const subject=clean(record.subject)||'غير محدد';groups.set(subject,(groups.get(subject)||0)+1);}
- const topics=[...groups].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ar'));
- $('topics-summary').textContent=num(topics.length)+' موضوعًا · عدد المواد في كل موضوع';
- $('topics-list').replaceChildren(...topics.slice(0,topicsExpanded?topics.length:6).map(([subject,count])=>{
-  const button=el('button',undefined,'topic-item');button.append(el('span',subject),el('strong',num(count)));
-  button.setAttribute('aria-label',subject+'، '+num(count)+' مادة، عرض في الفهرس');
-  button.onclick=()=>{filterFields.forEach(([key])=>$('filter-'+key).value='');$('filter-subject').value=subject==='غير محدد'&&!state.records.some(r=>clean(r.subject)===subject)?'__blank':subject;openCatalog();};
-  return button;
- }));
- $('toggle-topics').hidden=topics.length<=6;
- $('toggle-topics').textContent=topicsExpanded?'عرض أقل':'عرض جميع المواضيع ('+num(topics.length)+')';
- $('toggle-topics').setAttribute('aria-expanded',String(topicsExpanded));
-}
-$('toggle-topics').onclick=()=>{topicsExpanded=!topicsExpanded;renderTopics()};
 
+let topicsPage=0;
+function topicsPageSize(){return innerHeight<650?4:innerWidth<=760?6:8;}
+function renderTopics(){
+ const groups=new Map();for(const r of state.records){const subject=clean(r.subject)||'غير محدد';groups.set(subject,(groups.get(subject)||0)+1);}
+ const topics=[...groups].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ar')),size=topicsPageSize(),pages=Math.max(1,Math.ceil(topics.length/size));topicsPage=Math.min(topicsPage,pages-1);
+ $('topics-summary').textContent=num(topics.length)+' موضوعًا · عدد المواد';
+ $('topics-list').replaceChildren(...topics.slice(topicsPage*size,(topicsPage+1)*size).map(([subject,count])=>{const button=el('button',undefined,'topic-item');button.append(el('span',subject),el('strong',num(count)));button.setAttribute('aria-label',subject+'، '+num(count)+' مادة، عرض في الفهرس');button.onclick=()=>{filterFields.forEach(([key])=>$('filter-'+key).value='');$('filter-subject').value=subject==='غير محدد'&&!state.records.some(r=>clean(r.subject)===subject)?'__blank':subject;openCatalog();};return button;}));
+ $('topics-page').textContent=num(topicsPage+1)+' / '+num(pages);$('topics-previous').disabled=topicsPage===0;$('topics-next').disabled=topicsPage>=pages-1;
+}
+$('topics-previous').onclick=()=>{topicsPage--;renderTopics()};$('topics-next').onclick=()=>{topicsPage++;renderTopics()};window.addEventListener('resize',renderTopics);
 refresh();if(saved&&saved.baseVersion!==source.version)open('source-dialog');
