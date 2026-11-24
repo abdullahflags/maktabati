@@ -48,3 +48,5 @@ dialog{border-radius:28px}.searchbox,.field input{border-radius:18px}.choice-men
 @media(max-width:760px){.acquisition-table td:nth-child(2),.acquisition-table th:nth-child(2){right:143px;min-width:43px;max-width:43px;width:43px}.acquisition-table td:nth-child(2) .icon-button{width:34px}}
 
 .topics-summary-group{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:.78rem}.topics-more-icon{width:28px;height:28px;padding:5px;color:var(--muted)}.topics-more-icon svg{width:16px;height:16px}.topics-more-icon[hidden]{display:none}
+
+.header nav .icon-button,.header nav .icon-button:hover,.header nav .icon-button:focus,.header nav .icon-button:active{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}.header nav .icon-button:hover,.header nav .icon-button:focus-visible{color:var(--green)}.header nav .icon-button:focus-visible{outline:0;border-bottom:2px solid var(--green)!important}
