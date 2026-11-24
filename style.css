@@ -50,3 +50,5 @@ dialog{border-radius:28px}.searchbox,.field input{border-radius:18px}.choice-men
 .topics-summary-group{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:.78rem}.topics-more-icon{width:28px;height:28px;padding:5px;color:var(--muted)}.topics-more-icon svg{width:16px;height:16px}.topics-more-icon[hidden]{display:none}
 
 .header nav .icon-button,.header nav .icon-button:hover,.header nav .icon-button:focus,.header nav .icon-button:active{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}.header nav .icon-button:hover,.header nav .icon-button:focus-visible{color:var(--green)}.header nav .icon-button:focus-visible{outline:0;border-bottom:2px solid var(--green)!important}
+
+.delete-action{color:#a03934;border-color:transparent;background:transparent;margin-inline-start:auto}.delete-action:hover{background:#fcf1f0!important}.delete-action[hidden]{display:none}
