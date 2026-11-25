@@ -1,5 +1,5 @@
 import {rememberConnection,loadConnection,forgetConnection} from './github-connection.mjs?v=20261125-29';
-import {GitHubSync} from './github-sync.mjs?v=20261124-17';
+import {GitHubSync} from './github-sync.mjs?v=20261125-31';
 import {ACQUISITIONS,acquisitionGrid,acquisitionBookCount,acquisitionChanges,FOLLOWUP_OPTIONS,parseFollowups,toggleFollowup} from './acquisitions.mjs?v=20261124-21';
 import {exportOriginalWorkbook,isOriginalLayout} from './template-export.mjs?v=20261124-18';
 import {FIELDS,clean,normalize,findRecords,stats,parseGrid,planMerge,matchesQuery} from './core.mjs?v=20261124-17';
