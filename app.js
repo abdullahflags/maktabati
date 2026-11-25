@@ -130,8 +130,18 @@ async function checkGitHub(){if(!githubClient||githubBusy||githubConflict)return
 
 function scheduleGitHubSync(){if(!githubClient||githubConflict)return;clearTimeout(githubTimer);syncMessage('حُفظت محليًا؛ في انتظار المزامنة');githubTimer=setTimeout(pushGitHub,2500);}
 async function pushGitHub(){if(!githubClient||githubConflict)return;if(githubBusy){githubTimer=setTimeout(pushGitHub,1200);return;}if(!state.dirty){await checkGitHub();return;}githubBusy=true;const snapshot=structuredClone(state);try{syncMessage('جارٍ حفظ التعديلات في GitHub…');if(!snapshot.cloudBaseSha)throw Error('راجع نسخة GitHub أولًا قبل الرفع.');const [X,Zip,bytes]=await Promise.all([xlsx(),zipLibrary(),templateBytes()]),workbook=await exportOriginalWorkbook(bytes,snapshot.records,{XLSX:X,JSZip:Zip,auxiliary:snapshot.auxiliary}),payload={schemaVersion:1,version:'synced-'+Date.now()+'-'+crypto.randomUUID(),sourceName:source.sourceName,sourceDate:new Date().toISOString(),records:snapshot.records,auxiliary:snapshot.auxiliary,followupOptions:snapshot.followupOptions||[]},result=await githubClient.push({expectedSha:snapshot.cloudBaseSha,data:payload,workbook:workbook.bytes});githubRemote={...result,data:payload};const unchanged=state.updated===snapshot.updated&&sameLibrary(state,snapshot);state={...state,cloudBaseSha:result.dataSha,...(unchanged?{dirty:false,baseVersion:payload.version}:{})};localStorage.setItem(KEY,JSON.stringify(state));syncMessage(unchanged?'تمت المزامنة مع GitHub':'توجد تعديلات أخرى جاهزة للمزامنة');if(!unchanged)scheduleGitHubSync();}catch(error){if(error.conflict)showSyncConflict(error.remote);else if(error.status===409||error.status===422){const remote=await githubClient.read();showSyncConflict(remote);}else handleGitHubFailure(error);}finally{githubBusy=false;}}
-async function connectGitHub(token){githubClient=new GitHubSync(token);$('sync-token').value='';$('sync-connect-form').hidden=true;$('sync-connected').hidden=false;const connected=await checkGitHub();if(connected){try{rememberConnection(token);}catch(error){githubClient=null;$('sync-connect-form').hidden=false;$('sync-connected').hidden=true;throw error;}}else if(githubClient){$('sync-connect-form').hidden=false;$('sync-connected').hidden=true;}}
-$('sync-open').onclick=()=>open('sync-dialog');$('sync-connect-form').onsubmit=async e=>{e.preventDefault();const token=$('sync-token').value.trim();if(!token)return;$('sync-connect').disabled=true;try{await connectGitHub(token);}catch(error){syncMessage(error.message);}finally{$('sync-connect').disabled=false;}};
+async function connectGitHub(token){
+ if(githubBusy)return;
+ githubClient=new GitHubSync(token);
+ const connected=await checkGitHub();
+ if(connected){
+  try{rememberConnection(token);}catch(error){clearTimeout(githubTimer);githubClient=null;$('sync-connect-form').hidden=false;$('sync-connected').hidden=true;throw error;}
+  $('sync-token').value='';$('sync-connect-form').hidden=true;$('sync-connected').hidden=false;
+ }else{
+  clearTimeout(githubTimer);githubClient=null;$('sync-connect-form').hidden=false;$('sync-connected').hidden=true;
+ }
+}
+$('sync-open').onclick=()=>open('sync-dialog');$('sync-connect-form').onsubmit=async e=>{e.preventDefault();const token=$('sync-token').value.trim();if(!token)return;if(!/^(github_pat_|ghp_)[A-Za-z0-9_]+$/.test(token)){syncMessage('أدخل رمز الوصول الذي يبدأ بـ github_pat_، وليس رابط الموقع أو صفحة GitHub.');return;}$('sync-connect').disabled=true;try{await connectGitHub(token);}catch(error){syncMessage(error.message);}finally{$('sync-connect').disabled=false;}};
 $('sync-disconnect').onclick=()=>{clearTimeout(githubTimer);forgetConnection();githubClient=null;githubRemote=null;githubConflict=null;$('sync-conflict').hidden=true;$('sync-connected').hidden=true;$('sync-connect-form').hidden=false;syncMessage('الربط غير مفعّل');};
 $('sync-now').onclick=async()=>{await checkGitHub();if(githubClient&&state.dirty&&!githubConflict)await pushGitHub();};
 $('sync-use-remote').onclick=async()=>{if(!githubConflict||githubBusy)return;githubBusy=true;try{await acceptRemote(githubConflict);}catch(error){syncMessage(error.message);}finally{githubBusy=false;}};
