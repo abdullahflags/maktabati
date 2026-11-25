@@ -89,3 +89,5 @@ dialog{max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)}
 @media(max-height:650px) and (min-width:761px){:root{--header-height:60px}}
 
 .wordmark-logo{display:block;width:42px;height:42px;object-fit:contain;flex-shrink:0}@media(max-width:760px){.wordmark-logo{width:34px;height:34px}}@media(max-width:380px){.wordmark-logo{width:29px;height:29px}}
+
+.wordmark{gap:0}.wordmark-logo{width:64px;height:64px}@media(max-width:760px){.wordmark-logo{width:52px;height:52px}}@media(max-width:380px){.wordmark-logo{width:46px;height:46px}}
