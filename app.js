@@ -1,3 +1,4 @@
+import {installPullRefresh} from './pull-refresh.mjs?v=20261125-32';
 import {rememberConnection,loadConnection,forgetConnection} from './github-connection.mjs?v=20261125-29';
 import {GitHubSync} from './github-sync.mjs?v=20261125-31';
 import {ACQUISITIONS,acquisitionGrid,acquisitionBookCount,acquisitionChanges,FOLLOWUP_OPTIONS,parseFollowups,toggleFollowup} from './acquisitions.mjs?v=20261124-21';
@@ -150,3 +151,5 @@ window.addEventListener('online',()=>{if(githubClient){checkGitHub();if(state.di
 try{const token=loadConnection();if(token)connectGitHub(token).catch(error=>syncMessage(error.message));}catch{syncMessage('تعذّر استعادة الربط المحفوظ. افتح الربط لإعادة تفعيله.');}
 
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&githubClient)checkGitHub();});window.addEventListener('pageshow',()=>{if(githubClient)checkGitHub();});
+
+installPullRefresh();
